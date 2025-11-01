@@ -758,65 +758,65 @@ def get_performance():
     })
 
 # =============================================================================
-# FONCTIONS TELEGRAM
+# TELEGRAM BOT ULTRA-SIMPLIFIÉ
 # =============================================================================
 
 def send_telegram_alert(message):
     """Envoie une alerte Telegram"""
     try:
         if CHAT_ID:
-            bot.send_message(chat_id=CHAT_ID, text=message, parse_mode='Markdown')
+            url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
+            payload = {
+                'chat_id': CHAT_ID,
+                'text': message,
+                'parse_mode': 'Markdown'
+            }
+            requests.post(url, json=payload, timeout=10)
+            print(f"📱 Message Telegram envoyé")
     except Exception as e:
-        print(f"❌ Telegram error: {e}")
+        print(f"❌ Erreur Telegram: {e}")
 
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Commande /start pour Telegram"""
-    global CHAT_ID
-    CHAT_ID = update.effective_chat.id
-    stats = risk_manager.get_performance_stats()
-    
-    welcome_msg = (
-        "🤖 *Quantum AI Trader - Version Avancée*\n\n"
-        "*Fonctionnalités:* ✅\n"
-        "• Gestion intelligente des lots\n" 
-        "• SL/TP adaptatifs par symbole\n"
-        "• Trailing stop agressif (BE à 25% TP)\n"
-        "• Gestion capital avancée\n\n"
-        f"*Performance:*\n"
-        f"• Balance: ${stats['current_balance']:.2f}\n"
-        f"• Win Rate: {stats['win_rate']:.1%}\n"
-        f"• Risk Multiplier: {stats['risk_multiplier']:.1%}\n"
-        f"• Positions actives: {len(active_positions)}"
-    )
-    
-    await update.message.reply_text(welcome_msg, parse_mode='Markdown')
-
-async def stats_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Commande /stats pour Telegram"""
-    stats = risk_manager.get_performance_stats()
-    
-    stats_msg = (
-        "📈 *STATISTIQUES DÉTAILLÉES*\n"
-        f"*Balance:* ${stats['current_balance']:.2f}\n"
-        f"*Profit/Perte:* ${stats['profit_total']:.2f}\n"
-        f"*Win Rate:* {stats['win_rate']:.1%}\n"
-        f"*Total Trades:* {stats['total_trades']}\n"
-        f"*Drawdown:* {stats['max_drawdown']:.1%}\n"
-        f"*Pertes consécutives:* {stats['consecutive_losses']}\n"
-        f"*Multiplicateur Risque:* {stats['risk_multiplier']:.0%}\n"
-        f"*Positions actives:* {len(active_positions)}"
-    )
-    await update.message.reply_text(stats_msg, parse_mode='Markdown')
-
-def run_telegram_bot():
-    """Lance le bot Telegram"""
+@app.route('/webhook/telegram', methods=['POST'])
+def telegram_webhook():
+    """Webhook pour Telegram"""
     try:
-        application = Application.builder().token(TELEGRAM_TOKEN).build()
-        application.add_handler(CommandHandler("start", start_command))
-        application.add_handler(CommandHandler("stats", stats_command))
-        application.run_polling()
+        data = request.get_json()
+        message = data.get('message', {})
+        text = message.get('text', '')
+        chat_id = message.get('chat', {}).get('id')
+        
+        global CHAT_ID
+        CHAT_ID = chat_id
+        
+        if text == '/start' or text == '/status':
+            stats = risk_manager.get_performance_stats()
+            msg = (
+                "🤖 *Quantum AI Trader*\n\n"
+                f"Balance: ${stats['current_balance']:.2f}\n"
+                f"Win Rate: {stats['win_rate']:.1%}\n"
+                f"Trades: {stats['total_trades']}\n"
+                "Envoyez /stats pour plus d'infos"
+            )
+            send_telegram_alert(msg)
+            
+        elif text == '/stats':
+            stats = risk_manager.get_performance_stats()
+            msg = (
+                "📈 *STATISTIQUES*\n"
+                f"Balance: ${stats['current_balance']:.2f}\n"
+                f"Win Rate: {stats['win_rate']:.1%}\n"
+                f"Trades: {stats['total_trades']}\n"
+                f"Drawdown: {stats['max_drawdown']:.1%}"
+            )
+            send_telegram_alert(msg)
+        
+        return jsonify({"status": "ok"})
+        
     except Exception as e:
-        print(f"❌ Erreur bot Telegram: {e}")
+        print(f"❌ Webhook Telegram: {e}")
+        return jsonify({"status": "error"})
+
+print("✅ Webhook Telegram configuré sur /webhook/telegram")
 
 # =============================================================================
 # DÉMARRAGE
@@ -847,3 +847,4 @@ if __name__ == '__main__':
     
 
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+
