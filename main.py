@@ -1,7 +1,7 @@
 import flask
 from flask import Flask, request, jsonify
 import numpy as np
-import tensorflow as tf
+# TensorFlow removed for free tier compatibility
 import joblib
 import logging
 import requests
@@ -845,4 +845,5 @@ if __name__ == '__main__':
     print("📈 Performance: /performance")
     print("📊 Positions: /positions")
     
+
     app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
